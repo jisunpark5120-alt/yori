@@ -93,24 +93,25 @@ const Index = () => {
     if (type === 'link') {
       let source: Recipe['source'] = '기타';
       let emoji = '🍽';
+      let title = '링크에서 가져온 레시피';
       try {
         const url = new URL(value.startsWith('http') ? value : `https://${value}`);
         const host = url.hostname;
-        if (host.includes('youtube') || host.includes('youtu.be')) { source = 'YouTube'; emoji = '📺'; }
-        else if (host.includes('x.com') || host.includes('twitter')) { source = 'X (Twitter)'; emoji = '🐦'; }
-        else if (host.includes('instagram')) { source = 'Instagram'; emoji = '📸'; }
-        else if (host.includes('blog.naver') || host.includes('tistory')) { source = '블로그'; emoji = '📝'; }
-        else if (host.includes('hygall')) { source = '기타'; emoji = '💬'; }
+        if (host.includes('youtube') || host.includes('youtu.be')) { source = 'YouTube'; emoji = '📺'; title = 'YouTube 레시피'; }
+        else if (host.includes('x.com') || host.includes('twitter')) { source = 'X (Twitter)'; emoji = '🐦'; title = 'X에서 발견한 레시피'; }
+        else if (host.includes('instagram')) { source = 'Instagram'; emoji = '📸'; title = 'Instagram 레시피'; }
+        else if (host.includes('blog.naver') || host.includes('tistory')) { source = '블로그'; emoji = '📝'; title = '블로그 레시피'; }
+        else if (host.includes('hygall')) { source = '기타'; emoji = '💬'; title = '커뮤니티 레시피'; }
       } catch { /* keep defaults */ }
 
       return {
         id,
-        title: '새로운 레시피 (분석 중...)',
+        title,
         emoji,
         source,
         sourceUrl: value,
-        ingredients: ['재료를 분석 중이에요...'],
-        instructions: ['AI가 레시피를 분석하고 있어요. 잠시만 기다려주세요!'],
+        ingredients: ['원본 링크를 확인해주세요'],
+        instructions: ['원본 링크에서 레시피 내용을 확인할 수 있어요.'],
         replies: [],
         pinned: false,
         liked: false,
@@ -118,13 +119,29 @@ const Index = () => {
       };
     }
 
-    // Text input
+    if (type === 'image') {
+      return {
+        id,
+        title: '사진으로 추가한 레시피',
+        emoji: '📷',
+        source: '직접입력',
+        ingredients: ['사진을 확인해주세요'],
+        instructions: ['첨부한 사진에서 레시피를 확인할 수 있어요.'],
+        replies: [],
+        pinned: false,
+        liked: false,
+        createdAt: now,
+      };
+    }
+
+    // Text input — try to extract a title from first line
+    const firstLine = value.split('\n')[0].slice(0, 30);
     return {
       id,
-      title: '직접 입력한 레시피',
+      title: firstLine || '직접 입력한 레시피',
       emoji: '📝',
       source: '직접입력',
-      ingredients: ['입력한 내용에서 재료를 추출 중...'],
+      ingredients: ['직접 내용을 정리해주세요'],
       instructions: [value],
       replies: [],
       pinned: false,
