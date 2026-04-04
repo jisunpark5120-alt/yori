@@ -1,12 +1,14 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { mockRecipes } from '@/data/mockRecipes';
 import RecipeCard from '@/components/RecipeCard';
 import AddRecipeDialog from '@/components/AddRecipeDialog';
+import RecipeDetailOverlay from '@/components/RecipeDetailOverlay';
 import { useToast } from '@/hooks/use-toast';
+import { Recipe } from '@/types/recipe';
 
 const Index = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
   const sortedRecipes = [...mockRecipes].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
@@ -23,24 +25,20 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 bg-background/80 backdrop-blur-sm z-10 px-4 py-4 border-b border-border/50">
         <div className="container max-w-lg mx-auto">
-          <h1 className="text-xl font-bold text-foreground">
-            🍳 요리조리함
-          </h1>
+          <h1 className="text-xl font-bold text-foreground">🍳 요리조리함</h1>
           <p className="text-xs text-muted-foreground mt-0.5">나만의 레시피 보관함</p>
         </div>
       </header>
 
-      {/* Recipe List */}
       <main className="container max-w-lg mx-auto px-4 py-4">
         <div className="space-y-3">
           {sortedRecipes.map((recipe) => (
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onClick={() => navigate(`/recipe/${recipe.id}`)}
+              onClick={() => setSelectedRecipe(recipe)}
             />
           ))}
         </div>
@@ -55,6 +53,13 @@ const Index = () => {
       </main>
 
       <AddRecipeDialog onAdd={handleAdd} />
+
+      {selectedRecipe && (
+        <RecipeDetailOverlay
+          recipe={selectedRecipe}
+          onClose={() => setSelectedRecipe(null)}
+        />
+      )}
     </div>
   );
 };
