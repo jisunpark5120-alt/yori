@@ -18,15 +18,21 @@ export default async function handler(req, res) {
     parts = [{ text: value }];
   } else if (type === 'link') {
     try {
-      const response = await fetch(value);
+      let fetchUrl = value;
+      // 네이버 블로그는 iframe을 사용하므로 m.blog.naver.com (모바일뷰)로 변환해 본문을 가져옵니다.
+      if (fetchUrl.includes('blog.naver.com') && !fetchUrl.includes('m.blog.naver.com')) {
+        fetchUrl = fetchUrl.replace('blog.naver.com', 'm.blog.naver.com');
+      }
+      
+      const response = await fetch(fetchUrl);
       const html = await response.text();
       // 매우 간단한 HTML -> Text 변환 (스크립트/스타일 제거)
       let cleanText = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
                           .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
                           .replace(/<[^>]+>/g, ' ')
                           .replace(/\s+/g, ' ');
-      // 토큰 한계 방지를 위해 텍스트 길이 제한
-      cleanText = cleanText.substring(0, 15000); 
+      // 토큰 한계 방지를 위해 텍스트 길이 제한 (충분히 크게 10만 자)
+      cleanText = cleanText.substring(0, 100000); 
       parts = [{ text: `아래 제공된 웹페이지 문서 내용에서 요리 레시피를 찾아 추출해줘:\n\n${cleanText}` }];
     } catch (e) {
       return res.status(500).json({ error: '해당 링크의 내용을 읽어오는데 실패했습니다.' });
