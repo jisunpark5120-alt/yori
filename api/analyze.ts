@@ -1,5 +1,6 @@
 // @ts-nocheck
 export const maxDuration = 60; // 10초 제한 해제 (최대 60초)
+export const config = { api: { bodyParser: { sizeLimit: '4mb' } } };
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
