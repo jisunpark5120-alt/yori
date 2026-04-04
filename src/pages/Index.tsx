@@ -55,7 +55,17 @@ const Index = () => {
         let errMsg = 'AI 분석에 실패했습니다.';
         try {
           const errData = await response.json();
-          if (errData.error) errMsg = errData.error;
+          if (errData.error) {
+            errMsg = errData.error;
+            if (errData.details) {
+              const detailsObj = typeof errData.details === 'string' && errData.details.includes('{') 
+                ? JSON.parse(errData.details) 
+                : errData.details;
+              
+              const detailMessage = detailsObj?.error?.message || errData.details;
+              errMsg += `\n상세: ${detailMessage}`;
+            }
+          }
         } catch(e) {}
         throw new Error(errMsg);
       }
