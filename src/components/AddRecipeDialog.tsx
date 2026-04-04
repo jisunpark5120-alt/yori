@@ -37,7 +37,7 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files || []) as File[];
     if (!files.length) return;
     
     const sliceCount = 5 - images.length;
@@ -111,7 +111,7 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
           {tabs.map((tab) => (
             <button
               key={tab.type}
-              onClick={() => { setInputType(tab.type); setValue(''); removeImage(); }}
+              onClick={() => { setInputType(tab.type); setValue(''); setImages([]); }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 inputType === tab.type
                   ? 'bg-primary text-primary-foreground'
