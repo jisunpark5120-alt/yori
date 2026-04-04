@@ -8,25 +8,44 @@ import { Recipe } from '@/types/recipe';
 
 const Index = () => {
   const { toast } = useToast();
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
 
-  const sortedRecipes = [...mockRecipes].sort((a, b) => {
+  const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId) || null;
+
+  const sortedRecipes = [...recipes].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
+  const updateRecipe = (id: string, updates: Partial<Recipe>) => {
+    setRecipes((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+  };
+
+  const handleTogglePin = (id: string) => {
+    const recipe = recipes.find((r) => r.id === id);
+    if (recipe) updateRecipe(id, { pinned: !recipe.pinned });
+  };
+
+  const handleToggleLike = (id: string) => {
+    const recipe = recipes.find((r) => r.id === id);
+    if (recipe) updateRecipe(id, { liked: !recipe.liked });
+  };
+
+  const handleDelete = (id: string) => {
+    setRecipes((prev) => prev.filter((r) => r.id !== id));
+    setSelectedRecipeId(null);
+  };
+
   const handleAdd = async (type: string, value: string) => {
-    // Show analyzing toast
     toast({
       title: '분석 중... 🔍',
       description: `${type === 'link' ? '링크' : type === 'text' ? '텍스트' : '이미지'}를 확인하고 있어요.`,
     });
 
-    // Simulate AI analysis delay
     await new Promise((r) => setTimeout(r, 1500));
 
-    // Simple heuristic: check if content looks like a recipe
     const isRecipe = checkIfRecipe(type, value);
 
     if (!isRecipe) {
@@ -37,6 +56,10 @@ const Index = () => {
       });
       return;
     }
+
+    // Generate a new recipe card from the input
+    const newRecipe = generateRecipeFromInput(type, value);
+    setRecipes((prev) => [newRecipe, ...prev]);
 
     toast({
       title: '레시피 추가됨 ✨',
@@ -52,7 +75,6 @@ const Index = () => {
       return matchCount >= 2;
     }
     if (type === 'link') {
-      // For links, basic URL validation — actual AI analysis would happen server-side
       const recipeHosts = ['youtube.com', 'youtu.be', 'instagram.com', 'x.com', 'twitter.com', 'blog.naver.com', 'hygall.com', 'tiktok.com'];
       try {
         const url = new URL(value.startsWith('http') ? value : `https://${value}`);
@@ -61,7 +83,55 @@ const Index = () => {
         return false;
       }
     }
-    return true; // images pass through for now
+    return true;
+  };
+
+  const generateRecipeFromInput = (type: string, value: string): Recipe => {
+    const id = Date.now().toString();
+    const now = new Date().toISOString().slice(0, 10);
+
+    if (type === 'link') {
+      let source: Recipe['source'] = '기타';
+      let emoji = '🍽';
+      try {
+        const url = new URL(value.startsWith('http') ? value : `https://${value}`);
+        const host = url.hostname;
+        if (host.includes('youtube') || host.includes('youtu.be')) { source = 'YouTube'; emoji = '📺'; }
+        else if (host.includes('x.com') || host.includes('twitter')) { source = 'X (Twitter)'; emoji = '🐦'; }
+        else if (host.includes('instagram')) { source = 'Instagram'; emoji = '📸'; }
+        else if (host.includes('blog.naver') || host.includes('tistory')) { source = '블로그'; emoji = '📝'; }
+        else if (host.includes('hygall')) { source = '기타'; emoji = '💬'; }
+      } catch { /* keep defaults */ }
+
+      return {
+        id,
+        title: '새로운 레시피 (분석 중...)',
+        emoji,
+        source,
+        sourceUrl: value,
+        ingredients: ['재료를 분석 중이에요...'],
+        instructions: ['AI가 레시피를 분석하고 있어요. 잠시만 기다려주세요!'],
+        replies: [],
+        pinned: false,
+        liked: false,
+        createdAt: now,
+      };
+    }
+
+    // Text input
+    return {
+      id,
+      title: '직접 입력한 레시피',
+      emoji: '📝',
+      source: '직접입력',
+      ingredients: ['입력한 내용에서 재료를 추출 중...'],
+      instructions: [value],
+      replies: [],
+      pinned: false,
+      liked: false,
+      createdAt: now,
+      rawContent: value,
+    };
   };
 
   return (
@@ -79,7 +149,7 @@ const Index = () => {
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onClick={() => setSelectedRecipe(recipe)}
+              onClick={() => setSelectedRecipeId(recipe.id)}
             />
           ))}
         </div>
@@ -98,7 +168,10 @@ const Index = () => {
       {selectedRecipe && (
         <RecipeDetailOverlay
           recipe={selectedRecipe}
-          onClose={() => setSelectedRecipe(null)}
+          onClose={() => setSelectedRecipeId(null)}
+          onTogglePin={() => handleTogglePin(selectedRecipe.id)}
+          onToggleLike={() => handleToggleLike(selectedRecipe.id)}
+          onDelete={() => handleDelete(selectedRecipe.id)}
         />
       )}
     </div>

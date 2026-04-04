@@ -11,9 +11,12 @@ import { getSubstitutes } from '@/data/ingredientSubstitutes';
 interface RecipeDetailOverlayProps {
   recipe: Recipe;
   onClose: () => void;
+  onTogglePin: () => void;
+  onToggleLike: () => void;
+  onDelete: () => void;
 }
 
-const RecipeDetailOverlay = ({ recipe, onClose }: RecipeDetailOverlayProps) => {
+const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDelete }: RecipeDetailOverlayProps) => {
   const [replyText, setReplyText] = useState('');
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
@@ -49,13 +52,13 @@ const RecipeDetailOverlay = ({ recipe, onClose }: RecipeDetailOverlayProps) => {
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
         <div className="flex items-center gap-1">
-          <button className="p-2 rounded-xl hover:bg-muted transition-colors">
+          <button onClick={onTogglePin} className="p-2 rounded-xl hover:bg-muted transition-colors">
             <Pin className={`w-5 h-5 ${recipe.pinned ? 'text-secondary fill-secondary' : 'text-muted-foreground'}`} />
           </button>
-          <button className="p-2 rounded-xl hover:bg-muted transition-colors">
+          <button onClick={onToggleLike} className="p-2 rounded-xl hover:bg-muted transition-colors">
             <Heart className={`w-5 h-5 ${recipe.liked ? 'text-destructive fill-destructive' : 'text-muted-foreground'}`} />
           </button>
-          <button className="p-2 rounded-xl hover:bg-muted transition-colors">
+          <button onClick={onDelete} className="p-2 rounded-xl hover:bg-muted transition-colors">
             <Trash2 className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
@@ -89,7 +92,7 @@ const RecipeDetailOverlay = ({ recipe, onClose }: RecipeDetailOverlayProps) => {
           )}
         </div>
 
-        {/* Ingredients — 2 column with checkboxes */}
+        {/* Ingredients */}
         <section className="bg-card rounded-2xl p-4 shadow-sm border border-border/50 animate-fade-in">
           <h2 className="font-semibold text-foreground mb-3 text-sm">🧂 재료</h2>
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -158,7 +161,7 @@ const RecipeDetailOverlay = ({ recipe, onClose }: RecipeDetailOverlayProps) => {
           </ol>
         </section>
 
-        {/* Replies / Cooking Log */}
+        {/* Cooking Log */}
         <section className="bg-card rounded-2xl p-4 shadow-sm border border-border/50 animate-fade-in">
           <h2 className="font-semibold text-foreground mb-3 text-sm flex items-center gap-1.5">
             <MessageCircle className="w-4 h-4" />
@@ -184,7 +187,6 @@ const RecipeDetailOverlay = ({ recipe, onClose }: RecipeDetailOverlayProps) => {
             <p className="text-sm text-muted-foreground">아직 기록이 없어요</p>
           )}
 
-          {/* Image preview */}
           {replyImagePreview && (
             <div className="relative mt-3 inline-block">
               <img
