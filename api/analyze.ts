@@ -32,8 +32,8 @@ export default async function handler(req, res) {
                           .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
                           .replace(/<[^>]+>/g, ' ')
                           .replace(/\s+/g, ' ');
-      // 토큰 한계 방지를 위해 텍스트 길이 제한 (충분히 크게 10만 자)
-      cleanText = cleanText.substring(0, 100000); 
+      // 토큰 한계 방지를 위해 텍스트 길이 제한 (충분히 크게 2만 5천 여 자로 조절하여 응답 지연 방지)
+      cleanText = cleanText.substring(0, 25000); 
       parts = [{ text: `아래 제공된 웹페이지 문서 내용에서 요리 레시피를 찾아 추출해줘:\n\n${cleanText}` }];
     } catch (e) {
       return res.status(500).json({ error: '해당 링크의 내용을 읽어오는데 실패했습니다.' });

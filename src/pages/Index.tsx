@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { mockRecipes } from '@/data/mockRecipes';
 import RecipeCard from '@/components/RecipeCard';
 import AddRecipeDialog from '@/components/AddRecipeDialog';
@@ -8,7 +8,18 @@ import { Recipe } from '@/types/recipe';
 
 const Index = () => {
   const { toast } = useToast();
-  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
+  const [recipes, setRecipes] = useState<Recipe[]>(() => {
+    try {
+      const saved = localStorage.getItem('yori_recipes');
+      return saved ? JSON.parse(saved) : mockRecipes;
+    } catch {
+      return mockRecipes;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('yori_recipes', JSON.stringify(recipes));
+  }, [recipes]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const [analyzingTasks, setAnalyzingTasks] = useState<{ id: string; type: string }[]>([]);
 
@@ -37,6 +48,10 @@ const Index = () => {
   const handleDelete = (id: string) => {
     setRecipes((prev) => prev.filter((r) => r.id !== id));
     setSelectedRecipeId(null);
+  };
+
+  const handleAddReply = (recipeId: string, reply: import('@/types/recipe').RecipeReply) => {
+    setRecipes((prev) => prev.map((r) => r.id === recipeId ? { ...r, replies: [reply, ...r.replies] } : r));
   };
 
   const handleAdd = async (type: string, value: string) => {
@@ -159,6 +174,7 @@ const Index = () => {
           onTogglePin={() => handleTogglePin(selectedRecipe.id)}
           onToggleLike={() => handleToggleLike(selectedRecipe.id)}
           onDelete={() => handleDelete(selectedRecipe.id)}
+          onAddReply={(reply) => handleAddReply(selectedRecipe.id, reply)}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { Recipe } from '@/types/recipe';
+import { Recipe, RecipeReply } from '@/types/recipe';
 import { highlightText } from '@/lib/highlightRecipeText';
 import { ArrowLeft, Pin, Heart, Trash2, ExternalLink, MessageCircle, Camera, X, RefreshCw } from 'lucide-react';
 import { useState, useRef } from 'react';
@@ -14,9 +14,10 @@ interface RecipeDetailOverlayProps {
   onTogglePin: () => void;
   onToggleLike: () => void;
   onDelete: () => void;
+  onAddReply: (reply: RecipeReply) => void;
 }
 
-const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDelete }: RecipeDetailOverlayProps) => {
+const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDelete, onAddReply }: RecipeDetailOverlayProps) => {
   const [replyText, setReplyText] = useState('');
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null);
@@ -42,6 +43,18 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
   const removeImage = () => {
     setReplyImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRecord = () => {
+    if (!replyText.trim() && !replyImagePreview) return;
+    onAddReply({
+      id: Date.now().toString(),
+      text: replyText.trim(),
+      imageUrl: replyImagePreview || undefined,
+      createdAt: new Date().toISOString().slice(0, 10),
+    });
+    setReplyText('');
+    setReplyImagePreview(null);
   };
 
   return (
@@ -225,6 +238,7 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
             />
             <Button
               size="sm"
+              onClick={handleRecord}
               disabled={!replyText.trim() && !replyImagePreview}
               className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shrink-0"
             >
