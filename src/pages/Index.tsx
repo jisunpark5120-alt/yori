@@ -16,11 +16,52 @@ const Index = () => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const handleAdd = (type: string, value: string) => {
+  const handleAdd = async (type: string, value: string) => {
+    // Show analyzing toast
+    toast({
+      title: '분석 중... 🔍',
+      description: `${type === 'link' ? '링크' : type === 'text' ? '텍스트' : '이미지'}를 확인하고 있어요.`,
+    });
+
+    // Simulate AI analysis delay
+    await new Promise((r) => setTimeout(r, 1500));
+
+    // Simple heuristic: check if content looks like a recipe
+    const isRecipe = checkIfRecipe(type, value);
+
+    if (!isRecipe) {
+      toast({
+        title: '레시피가 아닌 것 같아요 🤔',
+        description: '요리 관련 내용이 아닌 것 같아요. 레시피 링크나 내용을 다시 확인해주세요!',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     toast({
       title: '레시피 추가됨 ✨',
-      description: `${type === 'link' ? '링크' : type === 'text' ? '텍스트' : '이미지'}가 분석 중이에요.`,
+      description: '레시피가 성공적으로 분석되었어요!',
     });
+  };
+
+  const checkIfRecipe = (type: string, value: string): boolean => {
+    if (type === 'text') {
+      const recipeKeywords = ['재료', '만드는', '레시피', '요리', '볶', '끓', '굽', '썰', '넣', '큰술', '작은술', 'ml', 'g', '분', '컵', '소금', '설탕', '간장', '기름'];
+      const lowerValue = value.toLowerCase();
+      const matchCount = recipeKeywords.filter((kw) => lowerValue.includes(kw)).length;
+      return matchCount >= 2;
+    }
+    if (type === 'link') {
+      // For links, basic URL validation — actual AI analysis would happen server-side
+      const recipeHosts = ['youtube.com', 'youtu.be', 'instagram.com', 'x.com', 'twitter.com', 'blog.naver.com', 'hygall.com', 'tiktok.com'];
+      try {
+        const url = new URL(value.startsWith('http') ? value : `https://${value}`);
+        return recipeHosts.some((h) => url.hostname.includes(h));
+      } catch {
+        return false;
+      }
+    }
+    return true; // images pass through for now
   };
 
   return (
