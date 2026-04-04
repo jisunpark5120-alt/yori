@@ -10,7 +10,7 @@ const Index = () => {
   const { toast } = useToast();
   const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzingTasks, setAnalyzingTasks] = useState<{ id: string; type: string }[]>([]);
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId) || null;
 
@@ -40,7 +40,9 @@ const Index = () => {
   };
 
   const handleAdd = async (type: string, value: string) => {
-    setIsAnalyzing(true);
+    const taskId = Date.now().toString() + Math.random().toString();
+    setAnalyzingTasks((prev) => [{ id: taskId, type }, ...prev]);
+    
     toast({
       title: '분석 중... 🔍',
       description: `${type === 'link' ? '링크' : type === 'text' ? '텍스트' : '이미지'}를 AI가 꼼꼼히 확인하고 있어요.`,
@@ -103,7 +105,7 @@ const Index = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsAnalyzing(false);
+      setAnalyzingTasks((prev) => prev.filter((t) => t.id !== taskId));
     }
   };
 
@@ -122,13 +124,14 @@ const Index = () => {
 
       <main className="container max-w-lg mx-auto px-4 py-4">
         <div className="space-y-3">
-          {isAnalyzing && (
-            <div className="w-full bg-card rounded-2xl p-4 shadow-sm border border-border/50 animate-pulse flex items-center justify-center h-[88px]">
-              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <span className="animate-spin text-lg">⏳</span> AI가 열심히 분석 중이에요...
+          {analyzingTasks.map((task) => (
+            <div key={task.id} className="w-full bg-card rounded-2xl p-4 shadow-sm border border-primary/50 animate-pulse flex items-center justify-center h-[88px]">
+              <p className="text-sm font-medium text-primary flex items-center gap-2">
+                <span className="animate-spin text-lg">⏳</span> 
+                {task.type === 'link' ? '링크' : task.type === 'image' ? '이미지' : '텍스트'} AI 분석 중...
               </p>
             </div>
-          )}
+          ))}
           {sortedRecipes.map((recipe) => (
             <RecipeCard
               key={recipe.id}
