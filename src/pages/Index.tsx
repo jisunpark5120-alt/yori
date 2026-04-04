@@ -54,7 +54,7 @@ const Index = () => {
     setRecipes((prev) => prev.map((r) => r.id === recipeId ? { ...r, replies: [reply, ...r.replies] } : r));
   };
 
-  const handleAdd = async (type: string, value: string) => {
+  const handleAdd = async (type: string, value: string | string[]) => {
     const taskId = Date.now().toString() + Math.random().toString();
     setAnalyzingTasks((prev) => [{ id: taskId, type }, ...prev]);
     
@@ -90,28 +90,29 @@ const Index = () => {
       }
 
       const result = await response.json();
+      const resultsArray = Array.isArray(result) ? result : [result];
       
-      const newRecipe: Recipe = {
-        id: Date.now().toString(),
-        title: result.title || 'AI 분석 레시피',
-        emoji: result.emoji || '🍽',
+      const newRecipes: Recipe[] = resultsArray.map((resItem, idx) => ({
+        id: Date.now().toString() + idx.toString(),
+        title: resItem.title || 'AI 분석 레시피',
+        emoji: resItem.emoji || '🍽',
         source: type === 'link' ? '기타' : '직접입력',
-        sourceUrl: type === 'link' ? value : undefined,
-        cookingTime: result.cookingTime,
-        ingredients: result.ingredients || ['재료 파싱 실패'],
-        instructions: result.instructions || ['내용 파싱 실패'],
+        sourceUrl: typeof value === 'string' && type === 'link' ? value : undefined,
+        cookingTime: resItem.cookingTime,
+        ingredients: resItem.ingredients || ['재료 파싱 실패'],
+        instructions: resItem.instructions || ['내용 파싱 실패'],
         replies: [],
         pinned: false,
         liked: false,
         createdAt: new Date().toISOString().slice(0, 10),
-        rawContent: type === 'text' ? value : undefined,
-      };
+        rawContent: typeof value === 'string' && type === 'text' ? value : undefined,
+      }));
 
-      setRecipes((prev) => [newRecipe, ...prev]);
+      setRecipes((prev) => [...newRecipes, ...prev]);
 
       toast({
-        title: '레시피 추가됨 ✨',
-        description: 'AI가 레시피를 성공적으로 분석했어요!',
+        title: `${newRecipes.length}개의 레시피 추가됨 ✨`,
+        description: 'AI가 레시피를 성공적으로 분석하여 추가했어요!',
       });
     } catch (error: any) {
       toast({

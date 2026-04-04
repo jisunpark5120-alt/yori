@@ -40,30 +40,40 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '해당 링크의 내용을 읽어오는데 실패했습니다.' });
     }
   } else if (type === 'image') {
-    // client assumes base64 input like "data:image/jpeg;base64,......."
-    const base64Data = value.split(',')[1];
-    const mimeType = value.split(';')[0].split(':')[1];
-    if (!base64Data || !mimeType) {
-      return res.status(400).json({ error: '잘못된 이미지 포맷 전송.' });
-    }
+    const images = Array.isArray(value) ? value : [value];
     parts = [
-      { text: "이 요리/레시피 이미지에서 요리 정보를 추출해줘." },
-      { inlineData: { mimeType, data: base64Data } }
+      { text: "이 요리/레시피 이미지들에서 요리 레시피 정보를 추출해줘. 만약 서로 다른 여러 개의 요리가 있다면 각각 분리해줘." }
     ];
+    for (const imgBase64 of images) {
+      const base64Data = imgBase64.split(',')[1];
+      const mimeType = imgBase64.split(';')[0]?.split(':')?.[1];
+      if (base64Data && mimeType) {
+        parts.push({ inlineData: { mimeType, data: base64Data } });
+      }
+    }
+    if (parts.length === 1) {
+      return res.status(400).json({ error: '유효한 이미지가 없습니다.' });
+    }
   } else {
     return res.status(400).json({ error: '지원하지 않는 입력 타입입니다.' });
   }
 
   const prompt = `
-당신은 최고의 요리 레시피 파싱 전문가입니다. 입력된 텍스트, 이미지, 혹은 웹페이지 내용에서 레시피 정보를 추출하여 반드시 아래 포맷의 순수 JSON으로 응답해야 합니다. 마크다운(\`\`\`json)으로 감싸지 마세요.
-{
-  "title": "요리 제목",
-  "emoji": "요리에 어울리는 이모지 하나 (예: 🥘)",
-  "cookingTime": "조리시간 (예: 30분, 모르면 null)",
-  "ingredients": ["재료 1", "재료 2", ...],
-  "instructions": ["조리 순서 1", "조리 순서 2", ...]
-}
-정보가 부족한 경우 적절히 유추하여 내용을 채워넣어 주세요.`;
+당신은 최고의 요리 레시피 파싱 전문가입니다. 주어진 내용(텍스트, 이미지, 링크 본문)을 분석하여 레시피를 추출하세요.
+제공된 문서나 이미지 내에 여러 개의 전혀 다른 요리 레시피가 포함되어 있다면, 각각을 별도의 오브젝트로 분리하세요.
+반드시 아래와 같은 JSON 배열(Array) 포맷으로만 응답해야 합니다. 마크다운(\`\`\`json 등)은 절대 사용하지 마세요.
+
+[
+  {
+    "title": "요리 제목",
+    "emoji": "요리에 어울리는 이모지 하나 (예: 🥘)",
+    "cookingTime": "조리시간 (예: 30분, 모르면 null)",
+    "ingredients": ["재료 1", "재료 2"],
+    "instructions": ["조리 순서 1", "조리 순서 2"]
+  }
+]
+
+정보가 부족한 경우 레시피의 맥락에 맞게 적절히 유추하여 채워넣어 주세요.`;
 
   try {
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {

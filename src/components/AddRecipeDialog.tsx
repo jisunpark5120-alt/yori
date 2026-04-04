@@ -8,21 +8,20 @@ import { Plus, Link, Image, FileText, X } from 'lucide-react';
 type InputType = 'link' | 'image' | 'text';
 
 interface AddRecipeDialogProps {
-  onAdd: (type: InputType, value: string) => void;
+  onAdd: (type: InputType, value: string | string[]) => void;
 }
 
 const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
   const [open, setOpen] = useState(false);
   const [inputType, setInputType] = useState<InputType>('link');
   const [value, setValue] = useState('');
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [images, setImages] = useState<{ preview: string; base64: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
     if (inputType === 'image') {
-      if (!imageBase64) return;
-      onAdd('image', imageBase64);
+      if (images.length === 0) return;
+      onAdd('image', images.map(img => img.base64));
     } else {
       if (!value.trim()) return;
       onAdd(inputType, value.trim());
@@ -33,17 +32,19 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
 
   const resetState = () => {
     setValue('');
-    setImagePreview(null);
-    setImageBase64(null);
+    setImages([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImagePreview(url);
-      
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    
+    const sliceCount = 5 - images.length;
+    const filesToProcess = files.slice(0, sliceCount);
+
+    const newImages = await Promise.all(filesToProcess.map(file => new Promise<{preview: string, base64: string}>((resolve) => {
+      const preview = URL.createObjectURL(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         const img = new Image();
@@ -65,21 +66,21 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-            setImageBase64(compressedBase64);
+            resolve({ preview, base64: canvas.toDataURL('image/jpeg', 0.8) });
           } else {
-            setImageBase64(reader.result as string);
+            resolve({ preview, base64: reader.result as string });
           }
         };
         img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
-    }
+    })));
+
+    setImages(prev => [...prev, ...newImages]);
   };
 
-  const removeImage = () => {
-    setImagePreview(null);
-    setImageBase64(null);
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -89,7 +90,7 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
     { type: 'text', icon: <FileText className="w-4 h-4" />, label: '텍스트' },
   ];
 
-  const isSubmitDisabled = inputType === 'image' ? !imagePreview : !value.trim();
+  const isSubmitDisabled = inputType === 'image' ? images.length === 0 : !value.trim();
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetState(); }}>
@@ -137,23 +138,39 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 accept="image/*"
                 onChange={handleImageChange}
                 className="hidden"
               />
-              {imagePreview ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="레시피 이미지 미리보기"
-                    className="w-full max-h-48 object-cover rounded-xl border border-border"
-                  />
-                  <button
-                    onClick={removeImage}
-                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center shadow-md"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+              {images.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative shrink-0">
+                        <img
+                          src={img.preview}
+                          alt="레시피 이미지 미리보기"
+                          className="h-28 w-28 object-cover rounded-xl border border-border"
+                        />
+                        <button
+                          onClick={() => removeImage(idx)}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {images.length < 5 && (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-28 w-28 shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                      >
+                        <Plus className="w-8 h-8 mb-1 opacity-50" />
+                        <span className="text-xs">추가 ({images.length}/5)</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <button
@@ -162,7 +179,7 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
                 >
                   <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">탭해서 레시피 사진을 올려주세요</p>
-                  <p className="text-xs mt-1 opacity-60">JPG, PNG 등</p>
+                  <p className="text-xs mt-1 opacity-60">최대 5장 (JPG, PNG 등)</p>
                 </button>
               )}
             </div>
