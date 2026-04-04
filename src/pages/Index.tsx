@@ -41,115 +41,61 @@ const Index = () => {
   const handleAdd = async (type: string, value: string) => {
     toast({
       title: '분석 중... 🔍',
-      description: `${type === 'link' ? '링크' : type === 'text' ? '텍스트' : '이미지'}를 확인하고 있어요.`,
+      description: `${type === 'link' ? '링크' : type === 'text' ? '텍스트' : '이미지'}를 AI가 꼼꼼히 확인하고 있어요.`,
     });
 
-    await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, value })
+      });
 
-    const isRecipe = checkIfRecipe(type, value);
+      if (!response.ok) {
+        let errMsg = 'AI 분석에 실패했습니다.';
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = errData.error;
+        } catch(e) {}
+        throw new Error(errMsg);
+      }
 
-    if (!isRecipe) {
+      const result = await response.json();
+      
+      const newRecipe: Recipe = {
+        id: Date.now().toString(),
+        title: result.title || 'AI 분석 레시피',
+        emoji: result.emoji || '🍽',
+        source: type === 'link' ? '기타' : '직접입력',
+        sourceUrl: type === 'link' ? value : undefined,
+        cookingTime: result.cookingTime,
+        ingredients: result.ingredients || ['재료 파싱 실패'],
+        instructions: result.instructions || ['내용 파싱 실패'],
+        replies: [],
+        pinned: false,
+        liked: false,
+        createdAt: new Date().toISOString().slice(0, 10),
+        rawContent: type === 'text' ? value : undefined,
+      };
+
+      setRecipes((prev) => [newRecipe, ...prev]);
+
       toast({
-        title: '레시피가 아닌 것 같아요 🤔',
-        description: '요리 관련 내용이 아닌 것 같아요. 레시피 링크나 내용을 다시 확인해주세요!',
+        title: '레시피 추가됨 ✨',
+        description: 'AI가 레시피를 성공적으로 분석했어요!',
+      });
+    } catch (error: any) {
+      toast({
+        title: '레시피 분석 실패 😵',
+        description: error.message || '요리 관련 내용이 아니거나 오류가 발생했습니다.',
         variant: 'destructive',
       });
-      return;
     }
-
-    // Generate a new recipe card from the input
-    const newRecipe = generateRecipeFromInput(type, value);
-    setRecipes((prev) => [newRecipe, ...prev]);
-
-    toast({
-      title: '레시피 추가됨 ✨',
-      description: '레시피가 성공적으로 분석되었어요!',
-    });
   };
 
-  const checkIfRecipe = (type: string, value: string): boolean => {
-    if (type === 'text') {
-      const recipeKeywords = ['재료', '만드는', '레시피', '요리', '볶', '끓', '굽', '썰', '넣', '큰술', '작은술', 'ml', 'g', '분', '컵', '소금', '설탕', '간장', '기름'];
-      const lowerValue = value.toLowerCase();
-      const matchCount = recipeKeywords.filter((kw) => lowerValue.includes(kw)).length;
-      return matchCount >= 2;
-    }
-    if (type === 'link') {
-      const recipeHosts = ['youtube.com', 'youtu.be', 'instagram.com', 'x.com', 'twitter.com', 'blog.naver.com', 'hygall.com', 'tiktok.com'];
-      try {
-        const url = new URL(value.startsWith('http') ? value : `https://${value}`);
-        return recipeHosts.some((h) => url.hostname.includes(h));
-      } catch {
-        return false;
-      }
-    }
-    return true;
-  };
 
-  const generateRecipeFromInput = (type: string, value: string): Recipe => {
-    const id = Date.now().toString();
-    const now = new Date().toISOString().slice(0, 10);
 
-    if (type === 'link') {
-      let source: Recipe['source'] = '기타';
-      let emoji = '🍽';
-      let title = '링크에서 가져온 레시피';
-      try {
-        const url = new URL(value.startsWith('http') ? value : `https://${value}`);
-        const host = url.hostname;
-        if (host.includes('youtube') || host.includes('youtu.be')) { source = 'YouTube'; emoji = '📺'; title = 'YouTube 레시피'; }
-        else if (host.includes('x.com') || host.includes('twitter')) { source = 'X (Twitter)'; emoji = '🐦'; title = 'X에서 발견한 레시피'; }
-        else if (host.includes('instagram')) { source = 'Instagram'; emoji = '📸'; title = 'Instagram 레시피'; }
-        else if (host.includes('blog.naver') || host.includes('tistory')) { source = '블로그'; emoji = '📝'; title = '블로그 레시피'; }
-        else if (host.includes('hygall')) { source = '기타'; emoji = '💬'; title = '커뮤니티 레시피'; }
-      } catch { /* keep defaults */ }
 
-      return {
-        id,
-        title,
-        emoji,
-        source,
-        sourceUrl: value,
-        ingredients: ['원본 링크를 확인해주세요'],
-        instructions: ['원본 링크에서 레시피 내용을 확인할 수 있어요.'],
-        replies: [],
-        pinned: false,
-        liked: false,
-        createdAt: now,
-      };
-    }
-
-    if (type === 'image') {
-      return {
-        id,
-        title: '사진으로 추가한 레시피',
-        emoji: '📷',
-        source: '직접입력',
-        ingredients: ['사진을 확인해주세요'],
-        instructions: ['첨부한 사진에서 레시피를 확인할 수 있어요.'],
-        replies: [],
-        pinned: false,
-        liked: false,
-        createdAt: now,
-      };
-    }
-
-    // Text input — try to extract a title from first line
-    const firstLine = value.split('\n')[0].slice(0, 30);
-    return {
-      id,
-      title: firstLine || '직접 입력한 레시피',
-      emoji: '📝',
-      source: '직접입력',
-      ingredients: ['직접 내용을 정리해주세요'],
-      instructions: [value],
-      replies: [],
-      pinned: false,
-      liked: false,
-      createdAt: now,
-      rawContent: value,
-    };
-  };
 
   return (
     <div className="min-h-screen bg-background">

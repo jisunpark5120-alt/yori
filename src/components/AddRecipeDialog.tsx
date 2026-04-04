@@ -16,12 +16,13 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
   const [inputType, setInputType] = useState<InputType>('link');
   const [value, setValue] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
     if (inputType === 'image') {
-      if (!imagePreview) return;
-      onAdd('image', imagePreview);
+      if (!imageBase64) return;
+      onAdd('image', imageBase64);
     } else {
       if (!value.trim()) return;
       onAdd(inputType, value.trim());
@@ -33,6 +34,7 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
   const resetState = () => {
     setValue('');
     setImagePreview(null);
+    setImageBase64(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -41,11 +43,18 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
     if (file) {
       const url = URL.createObjectURL(file);
       setImagePreview(url);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const removeImage = () => {
     setImagePreview(null);
+    setImageBase64(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
