@@ -35,8 +35,35 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setReplyImagePreview(url);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          const MAX_SIZE = 800; // Smaller size for DB storage
+          
+          if (width > height && width > MAX_SIZE) {
+            height = Math.round(height * (MAX_SIZE / width));
+            width = MAX_SIZE;
+          } else if (height > MAX_SIZE) {
+            width = Math.round(width * (MAX_SIZE / height));
+            height = MAX_SIZE;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            setReplyImagePreview(canvas.toDataURL('image/jpeg', 0.6)); // 0.6 quality to save massive KV space
+          } else {
+            setReplyImagePreview(reader.result as string);
+          }
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
     }
   };
 

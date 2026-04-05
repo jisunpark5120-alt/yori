@@ -8,18 +8,50 @@ import { Recipe } from '@/types/recipe';
 
 const Index = () => {
   const { toast } = useToast();
-  const [recipes, setRecipes] = useState<Recipe[]>(() => {
-    try {
-      const saved = localStorage.getItem('yori_recipes');
-      return saved ? JSON.parse(saved) : mockRecipes;
-    } catch {
-      return mockRecipes;
-    }
-  });
+  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('yori_recipes', JSON.stringify(recipes));
-  }, [recipes]);
+    fetch('/api/recipes')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.recipes && data.recipes.length > 0) {
+          setRecipes(data.recipes);
+        } else {
+          // Migration from localStorage if KV is empty
+          try {
+            const saved = localStorage.getItem('yori_recipes');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (parsed && parsed.length > 0) {
+                setRecipes(parsed);
+                fetch('/api/recipes', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ recipes: parsed }),
+                });
+              }
+            }
+          } catch (e) {}
+        }
+        setIsLoaded(true);
+      })
+      .catch((e) => {
+        console.error(e);
+        setIsLoaded(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('yori_recipes', JSON.stringify(recipes));
+      fetch('/api/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipes }),
+      }).catch(console.error);
+    }
+  }, [recipes, isLoaded]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const [analyzingTasks, setAnalyzingTasks] = useState<{ id: string; type: string }[]>([]);
 
