@@ -51,7 +51,7 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
           resolve({ preview, base64: '' });
           return;
         }
-        const img = new Image();
+        const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let { width, height } = img;

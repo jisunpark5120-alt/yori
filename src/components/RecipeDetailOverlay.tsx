@@ -38,7 +38,7 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
       const reader = new FileReader();
       reader.onloadend = () => {
         if (!reader.result) return;
-        const img = new Image();
+        const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let { width, height } = img;
