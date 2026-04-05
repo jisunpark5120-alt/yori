@@ -1,7 +1,8 @@
 import React from 'react';
 
-const TIME_REGEX = /((?:\d+\.?\d*\s*[-~]?\s*)?\d+\.?\d*\s*(?:시간|분|초)|반나절|하루)/g;
-const QUANTITY_REGEX = /((?:\d+\.?\d*\s*[-~]?\s*)?\d+\.?\d*\s*(?:큰술|작은술|스푼|숟갈|컵|ml|g|kg|L|개|장|모|대|줄기|쪽|봉지|캔|공기|줌|인분|cm)|(?:약간|조금|적당량|톡톡))/g;
+const NUM = `\\d+(?:[\\s/.~-]+\\d+)*`;
+const TIME_REGEX = new RegExp(`(${NUM}\\s*(?:시간|분|초)|반나절|하루)`, 'g');
+const QUANTITY_REGEX = new RegExp(`(${NUM}\\s*(?:큰술|작은술|스푼|숟가락|숟갈|컵|ml|g|kg|L|개|장|모|대|줄기|쪽|봉지|캔|공기|줌|인분|cm)|(?:약간|조금|적당량|톡톡|취향껏))`, 'g');
 
 export function highlightText(text: string): React.ReactNode[] {
   type Segment = { start: number; end: number; type: 'time' | 'quantity' };
