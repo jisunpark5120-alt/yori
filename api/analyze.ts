@@ -107,7 +107,15 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text();
-      return sendError(`Gemini API 호출 실패: ${errBody}`);
+      try {
+        const errJson = JSON.parse(errBody);
+        if (errJson?.error?.code === 429) {
+          return sendError('무료 AI 사용량 한도를 초과했습니다 (너무 많은 요청). 1분 정도 기다렸다가 다시 시도해 주시거나 내일 다시 이용해주세요.');
+        }
+        return sendError(`AI 분석 오류: ${errJson?.error?.message || errBody}`);
+      } catch (e) {
+        return sendError(`Gemini API 오류: ${errBody}`);
+      }
     }
 
     sendProgress(80, 'AI 응답 수신 완료! 레시피 데이터 다듬는 중...');
