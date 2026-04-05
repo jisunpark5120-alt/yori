@@ -160,12 +160,18 @@ const Index = () => {
         rawContent: typeof value === 'string' && type === 'text' ? value : undefined,
       }));
 
-      setRecipes((prev) => [...newRecipes, ...prev]);
-
-      toast({
-        title: `${newRecipes.length}개의 레시피 추가됨 ✨`,
-        description: 'AI가 레시피를 성공적으로 분석하여 추가했어요!',
-      });
+      if (newRecipes.length === 0) {
+        toast({
+          title: '레시피를 찾지 못했어요 😢',
+          description: '제공된 내용에서 상세한 요리 레시피를 발견할 수 없었습니다.',
+        });
+      } else {
+        setRecipes((prev) => [...newRecipes, ...prev]);
+        toast({
+          title: `${newRecipes.length}개의 레시피 추가됨 ✨`,
+          description: 'AI가 레시피를 성공적으로 분석하여 추가했어요!',
+        });
+      }
     } catch (error: any) {
       toast({
         title: '레시피 분석 실패 😵',
