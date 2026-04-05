@@ -71,8 +71,15 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
           <button onClick={onToggleLike} className="p-2 rounded-xl hover:bg-muted transition-colors">
             <Heart className={`w-5 h-5 ${recipe.liked ? 'text-destructive fill-destructive' : 'text-muted-foreground'}`} />
           </button>
-          <button onClick={onDelete} className="p-2 rounded-xl hover:bg-muted transition-colors">
-            <Trash2 className="w-5 h-5 text-muted-foreground" />
+          <button 
+            onClick={() => {
+              if (window.confirm('정말 이 레시피를 삭제할까요? 기록된 요리 일지도 함께 모두 사라집니다.')) {
+                onDelete();
+              }
+            }} 
+            className="p-2 rounded-xl hover:bg-destructive/10 transition-colors group"
+          >
+            <Trash2 className="w-5 h-5 text-muted-foreground group-hover:text-destructive transition-colors" />
           </button>
         </div>
       </header>
