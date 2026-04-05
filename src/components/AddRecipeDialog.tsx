@@ -47,6 +47,10 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
       const preview = URL.createObjectURL(file);
       const reader = new FileReader();
       reader.onloadend = () => {
+        if (!reader.result) {
+          resolve({ preview, base64: '' });
+          return;
+        }
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
@@ -71,8 +75,12 @@ const AddRecipeDialog = ({ onAdd }: AddRecipeDialogProps) => {
             resolve({ preview, base64: reader.result as string });
           }
         };
+        img.onerror = () => {
+          resolve({ preview, base64: reader.result as string });
+        };
         img.src = reader.result as string;
       };
+      reader.onerror = () => resolve({ preview, base64: '' });
       reader.readAsDataURL(file);
     })));
 

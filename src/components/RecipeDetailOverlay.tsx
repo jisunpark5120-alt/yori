@@ -37,6 +37,7 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
+        if (!reader.result) return;
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
@@ -61,6 +62,7 @@ const RecipeDetailOverlay = ({ recipe, onClose, onTogglePin, onToggleLike, onDel
             setReplyImagePreview(reader.result as string);
           }
         };
+        img.onerror = () => setReplyImagePreview(reader.result as string);
         img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
