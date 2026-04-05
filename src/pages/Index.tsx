@@ -53,7 +53,7 @@ const Index = () => {
     }
   }, [recipes, isLoaded]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
-  const [analyzingTasks, setAnalyzingTasks] = useState<{ id: string; type: string }[]>([]);
+  const [analyzingTasks, setAnalyzingTasks] = useState<{ id: string; type: string; progress: number; message: string }[]>([]);
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId) || null;
 
@@ -173,11 +173,20 @@ const Index = () => {
       <main className="container max-w-lg mx-auto px-4 py-4">
         <div className="space-y-3">
           {analyzingTasks.map((task) => (
-            <div key={task.id} className="w-full bg-card rounded-2xl p-4 shadow-sm border border-primary/50 animate-pulse flex items-center justify-center h-[88px]">
-              <p className="text-sm font-medium text-primary flex items-center gap-2">
-                <span className="animate-spin text-lg">⏳</span> 
-                {task.type === 'link' ? '링크' : task.type === 'image' ? '이미지' : '텍스트'} AI 분석 중...
-              </p>
+            <div key={task.id} className="w-full bg-card rounded-2xl p-4 shadow-sm border border-primary/50 flex flex-col justify-center h-[88px] relative overflow-hidden transition-all duration-300">
+              <div 
+                className="absolute left-0 top-0 bottom-0 bg-primary/10 transition-all duration-500 ease-out" 
+                style={{ width: `${task.progress}%` }} 
+              />
+              <div className="relative z-10 flex flex-col items-center">
+                <p className="text-sm font-bold text-primary flex items-center gap-2 mb-1">
+                  <span className="animate-spin text-lg">⏳</span> 
+                  {task.progress}% 완료
+                </p>
+                <p className="text-xs font-medium text-muted-foreground animate-pulse">
+                  {task.message}
+                </p>
+              </div>
             </div>
           ))}
           {sortedRecipes.map((recipe) => (

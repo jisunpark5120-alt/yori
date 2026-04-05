@@ -18,8 +18,9 @@ export default async function handler(req, res) {
 
   if (type === 'text') {
     parts = [{ text: value }];
-  } else if (type === 'link') {
+  } else  if (type === 'link') {
     try {
+      sendProgress(20, '링크 웹페이지 접속 및 텍스트 변환 중...');
       let fetchUrl = value;
       // 네이버 블로그는 iframe을 사용하므로 m.blog.naver.com (모바일뷰)로 변환해 본문을 가져옵니다.
       if (fetchUrl.includes('blog.naver.com') && !fetchUrl.includes('m.blog.naver.com')) {
@@ -37,9 +38,10 @@ export default async function handler(req, res) {
       cleanText = cleanText.substring(0, 25000); 
       parts = [{ text: `아래 제공된 웹페이지 문서 내용에서 요리 레시피를 찾아 추출해줘:\n\n${cleanText}` }];
     } catch (e) {
-      return res.status(500).json({ error: '해당 링크의 내용을 읽어오는데 실패했습니다.' });
+      return sendError('해당 링크의 내용을 읽어오는데 실패했습니다.');
     }
   } else if (type === 'image') {
+    sendProgress(20, '이미지 데이터 병합 및 전처리 중...');
     const images = Array.isArray(value) ? value : [value];
     parts = [
       { text: "이 요리/레시피 이미지들에서 요리 레시피 정보를 추출해줘. 만약 서로 다른 여러 개의 요리가 있다면 각각 분리해줘." }
@@ -52,10 +54,10 @@ export default async function handler(req, res) {
       }
     }
     if (parts.length === 1) {
-      return res.status(400).json({ error: '유효한 이미지가 없습니다.' });
+      return sendError('유효한 이미지가 없습니다.');
     }
   } else {
-    return res.status(400).json({ error: '지원하지 않는 입력 타입입니다.' });
+    return sendError('지원하지 않는 입력 타입입니다.');
   }
 
   const prompt = `
