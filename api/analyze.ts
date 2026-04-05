@@ -1,40 +1,56 @@
 // @ts-nocheck
 export const maxDuration = 60; // 10초 제한 해제 (최대 60초)
 export const config = { api: { bodyParser: { sizeLimit: '4mb' } } };
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  const sendProgress = (progress, message, result = null) => {
+    res.write(`data: ${JSON.stringify({ progress, message, result })}\n\n`);
+  };
+
+  const sendError = (errorMsg) => {
+    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    res.end();
+  };
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY 환경변수가 Vercel에 설정되지 않았습니다.' });
+    return sendError('GEMINI_API_KEY 환경변수가 설정되지 않았습니다.');
   }
 
   const { type, value } = req.body;
+  if (!type || !value) {
+    return sendError('잘못된 요청입니다.');
+  }
 
-  let promptContext = '';
+  sendProgress(10, '데이터 수집 시작...');
   let parts = [];
 
   if (type === 'text') {
     parts = [{ text: value }];
-  } else  if (type === 'link') {
+  } else if (type === 'link') {
     try {
       sendProgress(20, '링크 웹페이지 접속 및 텍스트 변환 중...');
       let fetchUrl = value;
-      // 네이버 블로그는 iframe을 사용하므로 m.blog.naver.com (모바일뷰)로 변환해 본문을 가져옵니다.
       if (fetchUrl.includes('blog.naver.com') && !fetchUrl.includes('m.blog.naver.com')) {
         fetchUrl = fetchUrl.replace('blog.naver.com', 'm.blog.naver.com');
       }
       
       const response = await fetch(fetchUrl);
       const html = await response.text();
-      // 매우 간단한 HTML -> Text 변환 (스크립트/스타일 제거)
       let cleanText = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
                           .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
                           .replace(/<[^>]+>/g, ' ')
                           .replace(/\s+/g, ' ');
-      // 토큰 한계 방지를 위해 텍스트 길이 제한 (충분히 크게 2만 5천 여 자로 조절하여 응답 지연 방지)
       cleanText = cleanText.substring(0, 25000); 
       parts = [{ text: `아래 제공된 웹페이지 문서 내용에서 요리 레시피를 찾아 추출해줘:\n\n${cleanText}` }];
     } catch (e) {
@@ -78,6 +94,7 @@ export default async function handler(req, res) {
 정보가 부족한 경우 레시피의 맥락에 맞게 적절히 유추하여 채워넣어 주세요.`;
 
   try {
+    sendProgress(40, '최신 AI(Gemini)에게 요리법 분석을 요청했어요... (최대 30-40초)');
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,23 +107,24 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text();
-      return res.status(500).json({ error: 'Gemini API 호출 실패', details: errBody });
+      return sendError(`Gemini API 호출 실패: ${errBody}`);
     }
 
+    sendProgress(80, 'AI 응답 수신 완료! 레시피 데이터 다듬는 중...');
     const data = await geminiRes.json();
     let resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!resultText) {
-      return res.status(500).json({ error: 'AI 응답 파싱 실패 (결과 없음)' });
+      return sendError('AI 응답 파싱 실패 (결과 없음)');
     }
 
-    // fallback: incase gemini returns markdown chunk despite mimeType config
     resultText = resultText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    
     const resultJson = JSON.parse(resultText);
-    return res.status(200).json(resultJson);
+    
+    sendProgress(100, '모든 분석이 완료되었습니다!', resultJson);
+    res.end();
 
   } catch (err) {
-    return res.status(500).json({ error: '백엔드 처리 중 에러 발생', details: err.message });
+    return sendError('백엔드 처리 중 에러 발생: ' + err.message);
   }
 }

@@ -106,23 +106,43 @@ const Index = () => {
         let errMsg = 'AI 분석에 실패했습니다.';
         try {
           const errData = await response.json();
-          if (errData.error) {
-            errMsg = errData.error;
-            if (errData.details) {
-              const detailsObj = typeof errData.details === 'string' && errData.details.includes('{') 
-                ? JSON.parse(errData.details) 
-                : errData.details;
-              
-              const detailMessage = detailsObj?.error?.message || errData.details;
-              errMsg += `\n상세: ${detailMessage}`;
-            }
-          }
+          if (errData.error) errMsg = errData.error;
         } catch(e) {}
         throw new Error(errMsg);
       }
 
-      const result = await response.json();
-      const resultsArray = Array.isArray(result) ? result : [result];
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('안정적인 데이터 스트리밍이 지원되지 않습니다.');
+
+      const decoder = new TextDecoder();
+      let done = false;
+      let finalResult = null;
+      let buffer = '';
+
+      while (!done) {
+        const { value: chunk, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (chunk) {
+          buffer += decoder.decode(chunk, { stream: true });
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+          
+          for (const msg of parts) {
+            if (msg.startsWith('data: ')) {
+              const dataStr = msg.substring(6).trim();
+              if (!dataStr) continue;
+              const data = JSON.parse(dataStr);
+              if (data.error) throw new Error(data.error);
+              setAnalyzingTasks((prev) => prev.map(t => t.id === taskId ? { ...t, progress: data.progress, message: data.message } : t));
+              if (data.progress === 100 && data.result) finalResult = data.result;
+            }
+          }
+        }
+      }
+
+      if (!finalResult) throw new Error('서버 연결이 중단되어 결과를 수신하지 못했습니다.');
+
+      const resultsArray = Array.isArray(finalResult) ? finalResult : [finalResult];
       
       const newRecipes: Recipe[] = resultsArray.map((resItem, idx) => ({
         id: Date.now().toString() + idx.toString(),
